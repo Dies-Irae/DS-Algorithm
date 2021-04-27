@@ -161,13 +161,13 @@ def test_thread(code_len, batch_size, SNR_start, SNR_stop, step, max_errs):
         errs = 0
         blks = 0
         while errs < max_errs:
-            sample = qr.generateBatch(1000)
+            sample = qr.generateBatch(batch_size)
             encodedSample = qr.encode(sample)
             received = qr.AWGN(encodedSample, i)
             decoded = qr.DSDecode(received)
             BER = np.mean(np.logical_xor(encodedSample, decoded))
-            errs += BER * code_len * 1000
-            blks += 1000
+            errs += BER * code_len * batch_size
+            blks += batch_size
         res[i] = errs / code_len / blks
     return res
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     num_cores = int(mp.cpu_count())
     print("Total Cores: " + str(num_cores) + " Cores")
     n_workers = 8
-    code_len = 23
+    code_len = 47
     batchSize = 100
     maxErrs = 125
     SNR_start = 0
