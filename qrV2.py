@@ -52,6 +52,13 @@ class QR:
                 [1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0,
                  0, 1, 1])
 
+        elif n == 79:
+            self.k = 40
+            self.t = 7
+            self.generatorPolynomial = np.array(
+                [1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0,
+                 0, 1])
+
         elif n == 89:
             self.k = 45
             self.t = 8
@@ -66,6 +73,19 @@ class QR:
                 [1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0,
                  0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1])
 
+        elif n == 113:
+            self.k = 57
+            self.t = 7
+            self.generatorPolynomial = np.array(
+                [1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1,
+                 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1])
+
+        elif n == 127:
+            self.k = 64
+            self.t = 9
+            self.generatorPolynomial = np.array(
+                [1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1,
+                 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1])
         self.G, self.H = generatorMatrix(self.n, self.k, self.generatorPolynomial)
         self.emTable, self.smTable = errorTable(self.n, self.H)
 
@@ -156,7 +176,8 @@ def test_thread(code_len, batch_size, SNR_start, SNR_stop, step, max_errs):
     """
     qr = QR(code_len)
     SNRs = np.arange(SNR_start, SNR_stop + step, step)
-    res = np.zeros(SNRs.shape[0])
+    resErr = np.zeros(SNRs.shape[0])
+    resBlk = np.zeros(SNRs.shape[0])
     for i in SNRs:
         errs = 0
         blks = 0
@@ -166,32 +187,40 @@ def test_thread(code_len, batch_size, SNR_start, SNR_stop, step, max_errs):
             received = qr.AWGN(encodedSample, i)
             decoded = qr.DSDecode(received)
             BER = np.mean(np.logical_xor(encodedSample, decoded))
-            errs += BER * code_len * batch_size
+            errs += int(BER * code_len * batch_size)
             blks += batch_size
-        res[i] = errs / code_len / blks
-    return res
+        resErr[i] = errs
+        resBlk[i] = blks
+    return resErr, resBlk
 
 
 ##TEST###
 if __name__ == "__main__":
     import multiprocessing as mp
-
+    import time
+    print(time.asctime(time.localtime(time.time())))
     num_cores = int(mp.cpu_count())
     print("Total Cores: " + str(num_cores) + " Cores")
-    n_workers = 8
-    code_len = 47
+    n_workers = 4
+    code_len = 97
     batchSize = 100
-    maxErrs = 125
+    maxErrs = (1000//n_workers) + 1
     SNR_start = 0
     SNR_stop = 7
     step = 1
+
     SNRs = np.arange(SNR_start, SNR_stop + step, step)
+    resErr = np.zeros(SNRs.shape[0])
+    resBlk = np.zeros(SNRs.shape[0])
     res = np.zeros(SNRs.shape[0])
     pool = mp.Pool(n_workers)
     results = []
     for _ in range(n_workers):
         results.append(pool.apply_async(test_thread, args=(code_len, batchSize, SNR_start, SNR_stop, step, maxErrs)))
     for worker in results:
-        res = res + worker.get() / n_workers
+        errs, blks = worker.get()
+        resErr += errs
+        resBlk += blks
     for i in range(SNRs.shape[0]):
-        print("BER: %e @ %f dB" % (res[i], SNRs[i]))
+        print("BER: %e @ %f dB" % (resErr[i]/resBlk[i]/code_len, SNRs[i]))
+    print(time.asctime(time.localtime(time.time())))
