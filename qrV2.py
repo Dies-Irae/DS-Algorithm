@@ -40,7 +40,7 @@ class QR:
 
         elif n == 71:
             self.k = 36
-            self.t = 6
+            self.t = 5
             self.generatorPolynomial = np.array(
                 [1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0,
                  1, 1])
@@ -174,6 +174,7 @@ def test_thread(code_len, batch_size, SNR_start, SNR_stop, step, max_errs):
     :param max_errs: if max errs achieved, end
     :return: BER Array(Numpy array)
     """
+    np.random.seed()
     qr = QR(code_len)
     SNRs = np.arange(SNR_start, SNR_stop + step, step)
     resErr = np.zeros(SNRs.shape[0])
@@ -202,7 +203,7 @@ if __name__ == "__main__":
     num_cores = int(mp.cpu_count())
     print("Total Cores: " + str(num_cores) + " Cores")
     n_workers = 4
-    code_len = 97
+    code_len = 47
     batchSize = 100
     maxErrs = (1000//n_workers) + 1
     SNR_start = 0
@@ -219,6 +220,7 @@ if __name__ == "__main__":
         results.append(pool.apply_async(test_thread, args=(code_len, batchSize, SNR_start, SNR_stop, step, maxErrs)))
     for worker in results:
         errs, blks = worker.get()
+        print(errs, blks)
         resErr += errs
         resBlk += blks
     for i in range(SNRs.shape[0]):
